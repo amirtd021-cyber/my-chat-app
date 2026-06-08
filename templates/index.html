@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>چت‌روم عمومی</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Tahoma, sans-serif; }
+        body { background-color: #1e1e2e; color: #cdd6f4; display: flex; flex-direction: column; height: 100vh; }
+        header { background-color: #11111b; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; border-bottom: 2px solid #cba6f7; }
+        #chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { background-color: #313244; padding: 10px 15px; border-radius: 12px; max-width: 80%; width: fit-content; animation: fadeIn 0.3s ease; }
+        .msg.me { background-color: #cba6f7; color: #11111b; align-self: flex-end; }
+        .username { font-size: 12px; color: #a6adc8; margin-bottom: 5px; display: block; }
+        .msg.me .username { color: #585b70; }
+        .input-area { background-color: #11111b; padding: 15px; display: flex; gap: 10px; align-items: center; }
+        input[type="text"] { flex: 1; background-color: #313244; border: none; padding: 12px; border-radius: 8px; color: #fff; outline: none; }
+        button { background-color: #cba6f7; border: none; padding: 12px 20px; border-radius: 8px; color: #11111b; font-weight: bold; cursor: pointer; }
+        .file-label { background-color: #45475a; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 18px; }
+        input[type="file"] { display: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <header>💬 چت‌روم عمومی آنلاین</header>
+    <div id="chat-box"></div>
+    <div class="input-area">
+        <label class="file-label" for="file-input">📎</label>
+        <input type="file" id="file-input">
+        <input type="text" id="message-input" placeholder="پیامت رو اینجا بنویس...">
+        <button id="send-btn">ارسال</button>
+    </div>
+
+    <script>
+        const socket = io();
+        const myName = "کاربر_" + Math.floor(Math.random() * 1000);
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const fileInput = document.getElementById('file-input');
+
+        socket.on('message', (data) => {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('msg');
+            if(data.user === myName) msgDiv.classList.add('me');
+            msgDiv.innerHTML = `<span class="username">${data.user}</span>${data.text}`;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        socket.on('file_received', (data) => {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('msg');
+            if(data.user === myName) msgDiv.classList.add('me');
+            msgDiv.innerHTML = `<span class="username">${data.user}</span>📁 فایل فرستاد: <b>${data.name}</b>`;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        sendBtn.addEventListener('click', () => {
+            const text = messageInput.value.trim();
+            if(text !== "") {
+                socket.emit('message', { user: myName, text: text });
+                messageInput.value = "";
+            }
+        });
+
+        messageInput.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') sendBtn.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    socket.emit('file_upload', {
+                        name: file.name,
+                        user: myName,
+                        data: evt.target.result
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+    </script>
+</body>
+</html>
